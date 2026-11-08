@@ -315,12 +315,13 @@ footer .keys { text-align: right; }
 
         var body = sections.map(sectionHtml).join('');
 
-        // Contenu rendu deux fois : la boucle de défilement est invisible.
-        $scroller.innerHTML = '<div class="copy">' + body + '</div>'
-                            + '<div class="copy" aria-hidden="true">' + body + '</div>';
+        // Un seul exemplaire tant que le contenu tient à l'écran : le second
+        // exemplaire ne sert qu'à boucler le défilement sans coupure.
+        $scroller.innerHTML = '<div class="copy">' + body + '</div>';
 
         fitRows();
         measure();
+        syncCopies();
 
         var total = sections.reduce(function (n, s) { return n + s.items.length; }, 0);
         document.getElementById('summary').textContent =
@@ -342,6 +343,25 @@ footer .keys { text-align: right; }
         }
         if (loopH > 0 && offset >= loopH) {
             offset = offset % loopH;
+        }
+    }
+
+    // Ajoute ou retire le second exemplaire selon que le contenu dépasse ou
+    // non la hauteur visible. Appelé après chaque rendu et à chaque resize.
+    function syncCopies() {
+        var copy = $scroller.querySelector('.copy');
+        if (!copy) { return; }
+
+        var copies = $scroller.querySelectorAll('.copy');
+        var scrollable = loopH > $main.clientHeight + 2;
+
+        if (scrollable && copies.length < 2) {
+            $scroller.insertAdjacentHTML('beforeend',
+                '<div class="copy" aria-hidden="true">' + copy.innerHTML + '</div>');
+        } else if (!scrollable && copies.length > 1) {
+            for (var i = copies.length - 1; i >= 1; i--) {
+                copies[i].parentNode.removeChild(copies[i]);
+            }
         }
     }
 
@@ -455,7 +475,11 @@ footer .keys { text-align: right; }
         }
     });
 
-    window.addEventListener('resize', function () { fitRows(); measure(); });
+    window.addEventListener('resize', function () {
+        fitRows();
+        measure();
+        syncCopies();
+    });
 
     tickClock();
     load();
