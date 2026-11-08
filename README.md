@@ -13,6 +13,9 @@ saisie des flèches.
 - Tous les archers inscrits sont affichés, même sans score : ils apparaissent
   alors avec **0 point** et **0/6** (ou 0/nombre total de volées)
 - Choix du départ : **tous les départs** ou un seul
+- Tri : avec **tous les départs**, par **départ → type de flèche
+  (division/classe) → nom** ; avec **un seul départ**, par **type de flèche →
+  nom**
 - Défilement continu si le contenu dépasse l'écran
 - Aucune table à créer, aucun fichier du cœur d'IANSEO à modifier
 
@@ -106,8 +109,13 @@ module `suivifl` (aucune table créée) :
 Le sélecteur **Départ affiché** liste les départs configurés dans IANSEO
 (table `Session`) et permet de choisir **Tous les départs** ou un seul. Les
 archers non affectés à un départ (`QuSession = 0`) n'apparaissent que dans
-« Tous les départs ». Les archers sans score sont bien affichés, avec
-`0/nombre total de volées` et `0` point.
+« Tous les départs », en fin de liste. Les archers sans score sont bien
+affichés, avec `0/nombre total de volées` et `0` point.
+
+Avec **Tous les départs**, les groupes sont ordonnés par **départ**, puis par
+**division/classe** (type de flèche), puis les archers par **nom/prénom**.
+Avec **un seul départ**, l'ordre est **division/classe**, puis **nom/prénom**
+(ou score décroissant si ce réglage est choisi).
 
 ## Dépannage
 

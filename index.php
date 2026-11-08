@@ -191,12 +191,13 @@ include('Common/Templates/head.php');
     </tr>
 
     <tr class="Modifica">
-        <td>Ordre dans les catégories</td>
+        <td>Ordre des archers dans une catégorie</td>
         <td>
             <select name="sort">
                 <option value="name"<?php echo $cfg['sort'] === 'name' ? ' selected' : ''; ?>>Nom de l'archer</option>
                 <option value="score"<?php echo $cfg['sort'] === 'score' ? ' selected' : ''; ?>>Score décroissant</option>
             </select>
+            <span style="color:#777;">(les groupes sont toujours triés par départ quand « Tous les départs » est choisi, puis par division/classe)</span>
         </td>
     </tr>
 

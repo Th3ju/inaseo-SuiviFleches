@@ -122,6 +122,28 @@ function suivifl_SaveConfig($TourId, array $cfg)
 }
 
 /**
+ * Comparaison de noms respectant l'ordre alphabétique français quand
+ * l'extension intl est disponible (sinon repli sur strcasecmp).
+ */
+function suivifl_CompareNames($a, $b)
+{
+    static $collator = null;
+
+    if ($collator === null) {
+        $collator = class_exists('Collator') ? new Collator('fr_FR') : false;
+    }
+
+    if ($collator) {
+        $result = $collator->compare($a, $b);
+        if ($result !== false) {
+            return $result;
+        }
+    }
+
+    return strcasecmp($a, $b);
+}
+
+/**
  * Traduit une description stockée dans Divisions/Classes.
  *
  * IANSEO accepte deux formes :
@@ -420,6 +442,7 @@ function suivifl_Data($TourId, array $cfg)
                    e.EnDivision,
                    e.EnClass,
                    COALESCE(q.QuSession, 0) AS QuSession,
+                   COALESCE(NULLIF(ses.SesName, ''), '') AS SesName,
                    q.QuTimestamp,
                    {$scoreExpr} AS Score,
                    {$hitsExpr} AS Hits,
@@ -431,6 +454,10 @@ function suivifl_Data($TourId, array $cfg)
               FROM Entries AS e
               LEFT JOIN Qualifications AS q
                      ON q.QuId = e.EnId
+              LEFT JOIN Session AS ses
+                     ON ses.SesTournament = e.EnTournament
+                    AND ses.SesOrder = q.QuSession
+                    AND ses.SesType = 'Q'
               LEFT JOIN Divisions AS d
                      ON d.DivTournament = e.EnTournament
                     AND d.DivId = e.EnDivision
@@ -471,7 +498,14 @@ function suivifl_Data($TourId, array $cfg)
 
         $divCode = trim((string)$row->EnDivision);
         $clCode  = trim((string)$row->EnClass);
-        $key     = $divCode . '|' . $clCode;
+        $session = (int)$row->QuSession;
+
+        // Avec tous les départs, le départ fait partie du regroupement :
+        // Départ -> division/classe -> nom. Avec un seul départ, il est inutile
+        // de répéter le départ dans chaque titre.
+        $key = ((int)$cfg['session'] === 0)
+            ? $session . '|' . $divCode . '|' . $clCode
+            : $divCode . '|' . $clCode;
 
         if (!isset($sections[$key])) {
             $divDescr = suivifl_Label($row->DivDescription);
@@ -494,13 +528,33 @@ function suivifl_Data($TourId, array $cfg)
                 $descr = 'Sans catégorie';
             }
 
+            $sessionName = trim((string)$row->SesName);
+            if ($session > 0) {
+                $sessionLabel = $sessionName !== ''
+                    ? $sessionName . ' — Départ ' . $session
+                    : 'Départ ' . $session;
+                $sessionHeading = $sessionName !== ''
+                    ? $sessionName
+                    : 'Départ ' . $session;
+            } else {
+                $sessionLabel = 'Sans départ';
+                $sessionHeading = 'Sans départ';
+            }
+
+            if ((int)$cfg['session'] === 0) {
+                $descr = $sessionHeading . ' — ' . $descr;
+            }
+
             $sections[$key] = array(
-                'division' => $divCode,
-                'class'    => $clCode,
-                'descr'    => $descr,
-                'items'    => array(),
-                '_do'      => (int)$row->DivOrder,
-                '_co'      => (int)$row->ClOrder,
+                'division'     => $divCode,
+                'class'        => $clCode,
+                'session'      => $session,
+                'sessionLabel' => $sessionLabel,
+                'descr'        => $descr,
+                'items'        => array(),
+                '_session'     => $session,
+                '_do'          => (int)$row->DivOrder,
+                '_co'          => (int)$row->ClOrder,
             );
         }
 
@@ -522,11 +576,11 @@ function suivifl_Data($TourId, array $cfg)
                 if ($a['score'] !== $b['score']) {
                     return $b['score'] <=> $a['score'];
                 }
-                return strcasecmp($a['athlete'], $b['athlete']);
+                return suivifl_CompareNames($a['athlete'], $b['athlete']);
             });
         } else {
             usort($section['items'], function ($a, $b) {
-                $cmp = strcasecmp($a['athlete'], $b['athlete']);
+                $cmp = suivifl_CompareNames($a['athlete'], $b['athlete']);
                 if ($cmp !== 0) {
                     return $cmp;
                 }
@@ -536,19 +590,30 @@ function suivifl_Data($TourId, array $cfg)
     }
     unset($section);
 
-    // Ordre des catégories : ordre d'affichage IANSEO, puis libellé.
-    uasort($sections, function ($a, $b) {
+    // Ordre des groupes :
+    //   - tous les départs : départ -> division/classe -> libellé ;
+    //   - un seul départ : division/classe -> libellé.
+    // Les archers sont ensuite triés par nom (ou par score si demandé).
+    $allSessions = ((int)$cfg['session'] === 0);
+    uasort($sections, function ($a, $b) use ($allSessions) {
+        if ($allSessions) {
+            $as = $a['_session'] > 0 ? $a['_session'] : PHP_INT_MAX;
+            $bs = $b['_session'] > 0 ? $b['_session'] : PHP_INT_MAX;
+            if ($as !== $bs) {
+                return $as <=> $bs;
+            }
+        }
         if ($a['_do'] !== $b['_do']) {
             return $a['_do'] <=> $b['_do'];
         }
         if ($a['_co'] !== $b['_co']) {
             return $a['_co'] <=> $b['_co'];
         }
-        return strcasecmp($a['descr'], $b['descr']);
+        return suivifl_CompareNames($a['descr'], $b['descr']);
     });
 
     foreach ($sections as &$section) {
-        unset($section['_do'], $section['_co']);
+        unset($section['_session'], $section['_do'], $section['_co']);
     }
     unset($section);
 
