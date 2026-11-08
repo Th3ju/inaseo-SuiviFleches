@@ -168,8 +168,10 @@ tbody td {
 tbody tr { height: var(--row-h); }
 tbody tr:nth-child(even) { background: var(--bg-alt); }
 
-.c-ath   { width: 78%; font-size: var(--font-row); font-weight: 600; }
-.c-score { width: 22%; text-align: right; font-size: calc(var(--font-row) * 1.12);
+.c-ath   { width: 62%; font-size: var(--font-row); font-weight: 600; }
+.c-end   { width: 14%; text-align: center; color: var(--muted); font-weight: 600;
+           font-size: calc(var(--font-row) * 0.78); font-variant-numeric: tabular-nums; }
+.c-score { width: 24%; text-align: right; font-size: calc(var(--font-row) * 1.12);
            font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .c-score.ok { color: var(--ok); }
 .c-score.ko { color: var(--ko); }
@@ -286,8 +288,17 @@ footer .keys { text-align: right; }
 
             var cls = score >= cfg.threshold ? 'ok' : 'ko';
 
+            var volleys = parseInt(it.volleys, 10);
+            var volleyText = '—';
+            if (volleys > 0) {
+                var volley = parseInt(it.volley, 10);
+                if (isNaN(volley) || volley < 0) { volley = 0; }
+                volleyText = volley + '/' + volleys;
+            }
+
             rows += '<tr>'
                   + '<td class="c-ath">' + esc(it.athlete) + '</td>'
+                  + '<td class="c-end">' + esc(volleyText) + '</td>'
                   + '<td class="c-score ' + cls + '">' + score + '</td>'
                   + '</tr>';
         });

@@ -6,7 +6,9 @@ saisie des flèches.
 
 - Entrée de menu : **Sorties → Flèches en direct**
 - Archers regroupés par **division + classe**
-- Chaque ligne : **nom, prénom et score** (rien d'autre)
+- Chaque ligne : **nom, prénom**, **volée courante / total des volées**, puis
+  le **score** (rien d'autre)
+- La volée est affichée juste avant le score, par exemple `4/6`
 - Score **rouge** sous le seuil, **vert à partir de 280** par défaut
 - Les archers qui n'ont pas encore tiré sont masqués par défaut (option pour
   afficher tout le monde)
@@ -72,6 +74,8 @@ flèche, y compris sans classement.
 - `Qualifications.QuD1Hits` … `QuD8Hits` : flèches saisies
 - `Qualifications.QuD1Arrowstring` … : chaîne des flèches (mise à jour par
   `Qualification/UpdateArrow.php` et `Qualification/UpdateQuals.php`)
+- `DistanceInformation` : nombre de volées (`DiEnds`) et de flèches par volée
+  (`DiArrows`) pour calculer la volée courante
 - `Entries` : nom, prénom, division, classe, statut
 - `Divisions` / `Classes` : libellés des catégories
 - `Session` : nom des départs, si renseigné
@@ -109,6 +113,14 @@ module `suivifl` (aucune table créée) :
 - Les archers marqués DNS / DNF / DSQ restent affichés s'ils ont une ligne
   `Qualifications` ; sans flèche saisie, leur score est 0 (rouge) si vous
   décochez le filtre.
+
+**La volée affiche « — »**
+
+- Vérifier que la qualification est configurée avec le nombre de volées et de
+  flèches par volée (**Compétition → Distances**, table
+  `DistanceInformation`). Pour un passage : 6 volées de 6 flèches.
+- La volée courante est calculée avec `DiArrows` et le nombre de flèches
+  saisies (`QuD*Hits`) ; si ces informations manquent, la colonne affiche « — ».
 
 **Les libellés de division/classe s'affichent en code**
 

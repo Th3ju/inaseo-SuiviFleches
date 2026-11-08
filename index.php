@@ -232,16 +232,17 @@ include('Common/Templates/head.php');
 <h2>Fonctionnement</h2>
 <p style="max-width:900px;">
     Les archers sont regroupés par division et classe (par exemple
-    « Arc Classique — Sénior 1 Homme »). Chaque ligne n'affiche que le nom,
-    le prénom et le score courant. Le score est rouge sous le seuil et vert
-    à partir du seuil.
+    « Arc Classique — Sénior 1 Homme »). Chaque ligne affiche le nom, le prénom,
+    la volée courante (par exemple <code>4/6</code>) puis le score courant.
+    Le score est rouge sous le seuil et vert à partir du seuil.
 </p>
 <p style="max-width:900px;color:#555;">
     IANSEO met à jour <code>QuD1Score</code>, <code>QuD1Hits</code> et
     <code>QuD1Arrowstring</code> à chaque flèche saisie
     (<code>Qualification/UpdateArrow.php</code>) ou à chaque feuille de marque
-    enregistrée (<code>Qualification/UpdateQuals.php</code>). L'écran se rafraîchit
-    donc tout seul, sans aucun recalcul.
+    enregistrée (<code>Qualification/UpdateQuals.php</code>). Le nombre total de
+    volées et de flèches par volée vient de <code>DistanceInformation</code>.
+    L'écran se rafraîchit donc tout seul, sans aucun recalcul.
 </p>
 
 <?php include('Common/Templates/tail.php'); ?>

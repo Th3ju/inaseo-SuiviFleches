@@ -7,6 +7,8 @@
  *   - QuD1Hits  … QuD8Hits   : nombre de flèches saisies
  *   - QuD1Arrowstring …       : chaîne des flèches (non utilisée pour l'affichage,
  *                               mais c'est elle qu'IANSEO met à jour à chaque flèche)
+ *   - DistanceInformation     : nombre total de volées et flèches par volée
+ *                               (pour afficher la volée courante « 4/6 »)
  *
  * Il ne dépend ni de la table Individuals, ni des Events, ni du moteur de
  * classement : c'est ce qui permet de l'utiliser pour un passage de flèches
@@ -208,6 +210,103 @@ function suivifl_SessionList($TourId)
 }
 
 /**
+ * Informations de distance/volées d'une qualification.
+ *
+ * @return array session => array(distance => array('ends','arrows'))
+ */
+function suivifl_DistanceInfo($TourId)
+{
+    $out = array();
+
+    $Rs = safe_r_sql(
+        "SELECT DiSession, DiDistance, DiEnds, DiArrows
+           FROM DistanceInformation
+          WHERE DiTournament = " . StrSafe_DB($TourId) . "
+            AND DiType = 'Q'
+          ORDER BY DiSession, DiDistance"
+    );
+
+    if (!$Rs) {
+        return $out;
+    }
+
+    while ($row = safe_fetch($Rs)) {
+        $session = (int)$row->DiSession;
+        $distance = (int)$row->DiDistance;
+        $out[$session][$distance] = array(
+            'ends'   => (int)$row->DiEnds,
+            'arrows' => (int)$row->DiArrows,
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * Numéro de la volée en cours et nombre total de volées prévues.
+ *
+ * Le numéro est celui de la dernière volée entamée : avec 19 flèches saisies
+ * sur des volées de 6, on affiche 4/6. Sans flèche saisie, 0/6.
+ *
+ * @return array (numéro de volée, nombre total de volées)
+ */
+function suivifl_VolleyInfo($row, $dist, array $distanceInfo)
+{
+    $session = (int)$row->QuSession;
+
+    if ($dist > 0) {
+        if (empty($distanceInfo[$session][$dist])) {
+            return array(0, 0);
+        }
+
+        $info   = $distanceInfo[$session][$dist];
+        $arrows = (int)$info['arrows'];
+        $ends   = (int)$info['ends'];
+
+        if ($arrows <= 0) {
+            return array(0, $ends);
+        }
+
+        $hits   = (int)$row->Hits;
+        $volley = $hits > 0 ? (int)ceil($hits / $arrows) : 0;
+        if ($ends > 0) {
+            $volley = min($volley, $ends);
+        }
+
+        return array($volley, $ends);
+    }
+
+    if (empty($distanceInfo[$session])) {
+        return array(0, 0);
+    }
+
+    $volley = 0;
+    $volleys = 0;
+
+    foreach ($distanceInfo[$session] as $d => $info) {
+        $ends   = (int)$info['ends'];
+        $arrows = (int)$info['arrows'];
+        $hits   = isset($row->{'Hits' . $d}) ? (int)$row->{'Hits' . $d} : 0;
+
+        if ($hits > 0 && $arrows > 0) {
+            $current = (int)ceil($hits / $arrows);
+            if ($ends > 0) {
+                $current = min($current, $ends);
+            }
+            $volley = $volleys + $current;
+        }
+
+        $volleys += $ends;
+    }
+
+    if ($volleys > 0) {
+        $volley = min($volley, $volleys);
+    }
+
+    return array($volley, $volleys);
+}
+
+/**
  * Données affichées : archers regroupés par division + classe.
  *
  * Le score provient de Qualifications. Pour un passage de flèches configuré
@@ -226,6 +325,16 @@ function suivifl_Data($TourId, array $cfg)
     $hitsExpr = $dist > 0
         ? "q.QuD{$dist}Hits"
         : "(q.QuD1Hits+q.QuD2Hits+q.QuD3Hits+q.QuD4Hits+q.QuD5Hits+q.QuD6Hits+q.QuD7Hits+q.QuD8Hits)";
+
+    // Hits par distance, nécessaires pour calculer la volée quand on affiche
+    // le total de plusieurs distances.
+    $hitSelect = array();
+    for ($i = 1; $i <= 8; $i++) {
+        $hitSelect[] = "q.QuD{$i}Hits AS Hits{$i}";
+    }
+    $hitSelect = implode(', ', $hitSelect);
+
+    $distanceInfo = suivifl_DistanceInfo($TourId);
 
     $where = "e.EnTournament = " . StrSafe_DB($TourId) . "
               AND e.EnAthlete = 1
@@ -247,6 +356,7 @@ function suivifl_Data($TourId, array $cfg)
                    q.QuTimestamp,
                    {$scoreExpr} AS Score,
                    {$hitsExpr} AS Hits,
+                   {$hitSelect},
                    COALESCE(NULLIF(d.DivDescription, ''), e.EnDivision) AS DivDescription,
                    COALESCE(NULLIF(c.ClDescription, ''), e.EnClass) AS ClDescription,
                    COALESCE(d.DivViewOrder, 999) AS DivOrder,
@@ -328,10 +438,14 @@ function suivifl_Data($TourId, array $cfg)
             );
         }
 
+        list($volley, $volleys) = suivifl_VolleyInfo($row, $dist, $distanceInfo);
+
         $sections[$key]['items'][] = array(
             'athlete' => $name,
             'score'   => (int)$row->Score,
             'hits'    => (int)$row->Hits,
+            'volley'  => $volley,
+            'volleys' => $volleys,
         );
     }
 
@@ -426,6 +540,8 @@ function suivifl_DemoData()
                 'athlete' => $archer[0],
                 'score'   => max(0, $archer[1] + mt_rand(-1, 1)),
                 'hits'    => 36,
+                'volley'  => 6,
+                'volleys' => 6,
             );
         }
         $sections[] = array(
