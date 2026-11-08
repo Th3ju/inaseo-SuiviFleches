@@ -10,8 +10,9 @@ saisie des flèches.
   le **score** (rien d'autre)
 - La volée est affichée juste avant le score, par exemple `4/6`
 - Score **rouge** sous le seuil, **vert à partir de 280** par défaut
-- Les archers qui n'ont pas encore tiré sont masqués par défaut (option pour
-  afficher tout le monde)
+- Tous les archers inscrits sont affichés, même sans score : ils apparaissent
+  alors avec **0 point** et **0/6** (ou 0/nombre total de volées)
+- Choix du départ : **tous les départs** ou un seul
 - Défilement continu si le contenu dépasse l'écran
 - Aucune table à créer, aucun fichier du cœur d'IANSEO à modifier
 
@@ -61,7 +62,7 @@ passage de flèches :
 | Dépend d'un classement calculé | Oui (`IndRank`) | Non |
 | Lit les flèches saisies | Non | Oui (les colonnes `QuD*` sont mises à jour à chaque flèche) |
 | Regroupement | Par épreuve | Par division + classe |
-| Colonnes | rang, club, score, 10+, X | nom, prénom, score |
+| Colonnes | rang, club, score, 10+, X | nom, prénom, volée, score |
 
 Sur un passage de flèches, il est fréquent qu'aucune épreuve (`Events`) ni
 aucune ligne `Individuals` ne soit configurée : le module d'exemple n'a alors
@@ -76,9 +77,11 @@ flèche, y compris sans classement.
   `Qualification/UpdateArrow.php` et `Qualification/UpdateQuals.php`)
 - `DistanceInformation` : nombre de volées (`DiEnds`) et de flèches par volée
   (`DiArrows`) pour calculer la volée courante
-- `Entries` : nom, prénom, division, classe, statut
+- `Entries` : nom, prénom, division, classe, statut — c'est la base de
+  l'affichage, donc un archer apparaît même s'il n'a pas encore de ligne
+  `Qualifications`
 - `Divisions` / `Classes` : libellés des catégories
-- `Session` : nom des départs, si renseigné
+- `Session` : départs configurés et leur nom
 
 Le module **ne lit pas** `Individuals` et **ne recalcule rien**. Il est donc à
 jour dès qu'une flèche ou une volée est enregistrée.
@@ -95,24 +98,29 @@ module `suivifl` (aucune table créée) :
 | `session` | 0 | 0 = tous les départs, sinon numéro de `QuSession` |
 | `dist` | 0 | 0 = total, sinon n° de distance (1 à 8) |
 | `sort` | `name` | `name` = ordre alphabétique, `score` = score décroissant |
-| `onlystarted` | 1 | 1 = seulement ceux qui ont au moins une flèche ; 0 = tous |
+| `onlystarted` | 0 | 0 = tous (défaut) ; 1 = seulement ceux qui ont au moins une flèche |
 | `rows` | 12 | lignes visibles (pilote la taille du texte) |
 | `scrollsec` | 20 | secondes pour défiler une hauteur d'écran |
 | `refresh` | 5 | secondes entre deux interrogations du serveur |
+
+Le sélecteur **Départ affiché** liste les départs configurés dans IANSEO
+(table `Session`) et permet de choisir **Tous les départs** ou un seul. Les
+archers non affectés à un départ (`QuSession = 0`) n'apparaissent que dans
+« Tous les départs ». Les archers sans score sont bien affichés, avec
+`0/nombre total de volées` et `0` point.
 
 ## Dépannage
 
 **Aucune catégorie / aucun archer**
 
-- Vérifier que les archers ont bien une ligne dans `Qualifications` (et pas
-  seulement dans `Entries`).
+- Vérifier que les archers sont bien enregistrés dans `Entries`
+  (une ligne `Qualifications` n'est pas obligatoire).
 - Vérifier `EnStatus <= 1` et `EnAthlete = 1`.
 - Vérifier le départ sélectionné et la distance sélectionnée.
-- Décocher « N'afficher que les archers ayant commencé » pour voir tout le
-  monde, y compris les scores à 0.
+- Si l'option « N'afficher que les archers ayant commencé » est cochée, la
+  décocher pour voir aussi les archers sans score.
 - Les archers marqués DNS / DNF / DSQ restent affichés s'ils ont une ligne
-  `Qualifications` ; sans flèche saisie, leur score est 0 (rouge) si vous
-  décochez le filtre.
+  `Qualifications` ; sans flèche saisie, leur score est 0 (rouge).
 
 **La volée affiche « — »**
 

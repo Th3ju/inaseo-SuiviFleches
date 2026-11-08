@@ -42,7 +42,7 @@ function suivifl_Defaults()
         'scrollsec'   => 20,   // secondes pour défiler une hauteur d'écran
         'dist'        => 0,    // 0 = total, sinon n° de distance
         'session'     => 0,    // 0 = tous les départs
-        'onlystarted' => 1,    // 1 = uniquement les archers ayant au moins une flèche
+        'onlystarted' => 0,    // 1 = uniquement les archers ayant au moins une flèche
         'sort'        => 'name', // 'name' ou 'score'
     );
 }
@@ -164,6 +164,29 @@ function suivifl_SessionList($TourId)
 {
     $out = array();
 
+    // Départs configurés dans IANSEO : ils existent même avant toute saisie
+    // et doivent donc apparaître dans le sélecteur.
+    $Rs = safe_r_sql(
+        "SELECT SesOrder AS SessionId, SesName
+           FROM Session
+          WHERE SesTournament = " . StrSafe_DB($TourId) . "
+            AND SesType = 'Q'
+          ORDER BY SesOrder"
+    );
+
+    if ($Rs) {
+        while ($row = safe_fetch($Rs)) {
+            $id = (int)$row->SessionId;
+            $out[$id] = array(
+                'id'    => $id,
+                'label' => '',
+                'nb'    => 0,
+                'name'  => trim((string)$row->SesName),
+            );
+        }
+    }
+
+    // Départs réellement utilisés par des archers, avec leur effectif.
     $Rs = safe_r_sql(
         "SELECT q.QuSession AS SessionId,
                 MAX(NULLIF(s.SesName, '')) AS SesName,
@@ -183,29 +206,43 @@ function suivifl_SessionList($TourId)
           ORDER BY q.QuSession"
     );
 
-    if (!$Rs) {
-        return $out;
+    if ($Rs) {
+        while ($row = safe_fetch($Rs)) {
+            $id = (int)$row->SessionId;
+            $name = trim((string)$row->SesName);
+
+            if (!isset($out[$id])) {
+                $out[$id] = array(
+                    'id'    => $id,
+                    'label' => '',
+                    'nb'    => 0,
+                    'name'  => '',
+                );
+            }
+            if ($name !== '') {
+                $out[$id]['name'] = $name;
+            }
+            $out[$id]['nb'] = (int)$row->Nb;
+        }
     }
 
-    while ($row = safe_fetch($Rs)) {
-        $id   = (int)$row->SessionId;
-        $name = trim((string)$row->SesName);
+    foreach ($out as &$session) {
+        $id = (int)$session['id'];
+        $name = $session['name'];
 
         if ($name !== '') {
-            $label = $name . ' — Départ ' . $id;
+            $session['label'] = $name . ' — Départ ' . $id;
         } elseif ($id > 0) {
-            $label = 'Départ ' . $id;
+            $session['label'] = 'Départ ' . $id;
         } else {
-            $label = 'Sans départ';
+            $session['label'] = 'Sans départ';
         }
 
-        $out[$id] = array(
-            'id'    => $id,
-            'label' => $label,
-            'nb'    => (int)$row->Nb,
-        );
+        unset($session['name']);
     }
+    unset($session);
 
+    ksort($out);
     return $out;
 }
 
@@ -243,6 +280,28 @@ function suivifl_DistanceInfo($TourId)
 }
 
 /**
+ * Jeu de distances commun à toutes les sessions, s'il est identique partout.
+ *
+ * Permet d'afficher « 0/6 » pour un archer sans départ (QuSession=0) ou sans
+ * ligne Qualifications quand le concours n'a qu'une seule configuration.
+ */
+function suivifl_DefaultDistanceSet(array $distanceInfo)
+{
+    if (!$distanceInfo) {
+        return null;
+    }
+
+    $first = reset($distanceInfo);
+    foreach ($distanceInfo as $set) {
+        if ($set != $first) {
+            return null;
+        }
+    }
+
+    return $first;
+}
+
+/**
  * Numéro de la volée en cours et nombre total de volées prévues.
  *
  * Le numéro est celui de la dernière volée entamée : avec 19 flèches saisies
@@ -254,12 +313,20 @@ function suivifl_VolleyInfo($row, $dist, array $distanceInfo)
 {
     $session = (int)$row->QuSession;
 
+    // Archers sans départ (QuSession=0) ou sans ligne Qualifications : si
+    // toutes les sessions ont la même configuration, on l'utilise pour
+    // pouvoir afficher quand même « 0/6 ».
+    $infoSet = !empty($distanceInfo[$session]) ? $distanceInfo[$session] : null;
+    if (!$infoSet) {
+        $infoSet = suivifl_DefaultDistanceSet($distanceInfo);
+    }
+
     if ($dist > 0) {
-        if (empty($distanceInfo[$session][$dist])) {
+        if (empty($infoSet[$dist])) {
             return array(0, 0);
         }
 
-        $info   = $distanceInfo[$session][$dist];
+        $info   = $infoSet[$dist];
         $arrows = (int)$info['arrows'];
         $ends   = (int)$info['ends'];
 
@@ -276,14 +343,14 @@ function suivifl_VolleyInfo($row, $dist, array $distanceInfo)
         return array($volley, $ends);
     }
 
-    if (empty($distanceInfo[$session])) {
+    if (empty($infoSet)) {
         return array(0, 0);
     }
 
     $volley = 0;
     $volleys = 0;
 
-    foreach ($distanceInfo[$session] as $d => $info) {
+    foreach ($infoSet as $d => $info) {
         $ends   = (int)$info['ends'];
         $arrows = (int)$info['arrows'];
         $hits   = isset($row->{'Hits' . $d}) ? (int)$row->{'Hits' . $d} : 0;
@@ -320,17 +387,17 @@ function suivifl_Data($TourId, array $cfg)
     $dist = (int)$cfg['dist'];
 
     $scoreExpr = $dist > 0
-        ? "q.QuD{$dist}Score"
-        : "(q.QuD1Score+q.QuD2Score+q.QuD3Score+q.QuD4Score+q.QuD5Score+q.QuD6Score+q.QuD7Score+q.QuD8Score)";
+        ? "COALESCE(q.QuD{$dist}Score, 0)"
+        : "(COALESCE(q.QuD1Score,0)+COALESCE(q.QuD2Score,0)+COALESCE(q.QuD3Score,0)+COALESCE(q.QuD4Score,0)+COALESCE(q.QuD5Score,0)+COALESCE(q.QuD6Score,0)+COALESCE(q.QuD7Score,0)+COALESCE(q.QuD8Score,0))";
     $hitsExpr = $dist > 0
-        ? "q.QuD{$dist}Hits"
-        : "(q.QuD1Hits+q.QuD2Hits+q.QuD3Hits+q.QuD4Hits+q.QuD5Hits+q.QuD6Hits+q.QuD7Hits+q.QuD8Hits)";
+        ? "COALESCE(q.QuD{$dist}Hits, 0)"
+        : "(COALESCE(q.QuD1Hits,0)+COALESCE(q.QuD2Hits,0)+COALESCE(q.QuD3Hits,0)+COALESCE(q.QuD4Hits,0)+COALESCE(q.QuD5Hits,0)+COALESCE(q.QuD6Hits,0)+COALESCE(q.QuD7Hits,0)+COALESCE(q.QuD8Hits,0))";
 
     // Hits par distance, nécessaires pour calculer la volée quand on affiche
     // le total de plusieurs distances.
     $hitSelect = array();
     for ($i = 1; $i <= 8; $i++) {
-        $hitSelect[] = "q.QuD{$i}Hits AS Hits{$i}";
+        $hitSelect[] = "COALESCE(q.QuD{$i}Hits, 0) AS Hits{$i}";
     }
     $hitSelect = implode(', ', $hitSelect);
 
@@ -352,7 +419,7 @@ function suivifl_Data($TourId, array $cfg)
                    e.EnFirstName,
                    e.EnDivision,
                    e.EnClass,
-                   q.QuSession,
+                   COALESCE(q.QuSession, 0) AS QuSession,
                    q.QuTimestamp,
                    {$scoreExpr} AS Score,
                    {$hitsExpr} AS Hits,
@@ -361,10 +428,9 @@ function suivifl_Data($TourId, array $cfg)
                    COALESCE(NULLIF(c.ClDescription, ''), e.EnClass) AS ClDescription,
                    COALESCE(d.DivViewOrder, 999) AS DivOrder,
                    COALESCE(c.ClViewOrder, 999) AS ClOrder
-              FROM Qualifications AS q
-              INNER JOIN Entries AS e
-                      ON e.EnId = q.QuId
-                     AND e.EnTournament = " . StrSafe_DB($TourId) . "
+              FROM Entries AS e
+              LEFT JOIN Qualifications AS q
+                     ON q.QuId = e.EnId
               LEFT JOIN Divisions AS d
                      ON d.DivTournament = e.EnTournament
                     AND d.DivId = e.EnDivision

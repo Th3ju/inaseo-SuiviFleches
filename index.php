@@ -50,6 +50,17 @@ $Tour = $TourRs ? safe_fetch($TourRs) : false;
 $TourName = $Tour ? (string)$Tour->ToName : '';
 $NumDist  = $Tour ? max(1, (int)$Tour->ToNumDist) : 1;
 
+$ArcherCountRs = safe_r_sql(
+    "SELECT COUNT(*) AS Nb
+       FROM Entries
+      WHERE EnTournament = " . StrSafe_DB($TourId) . "
+        AND EnAthlete = 1
+        AND EnStatus <= 1"
+);
+$ArcherCount = ($ArcherCountRs && ($ArcherCountRow = safe_fetch($ArcherCountRs)))
+    ? (int)$ArcherCountRow->Nb
+    : 0;
+
 $PreviewSections = count($Preview['sections']);
 $PreviewArchers  = 0;
 foreach ($Preview['sections'] as $section) {
@@ -113,11 +124,11 @@ include('Common/Templates/head.php');
     passage de flèches, même si aucune épreuve n'est configurée.
 </div>
 
-<?php if (empty($Sessions)) { ?>
+<?php if ($ArcherCount === 0) { ?>
 <div style="padding:.7em;background:#fcf8e3;border-left:4px solid #f0ad4e;margin-bottom:1em;">
-    <b><i class="fa fa-exclamation-triangle"></i> Aucun archer qualifié trouvé.</b><br>
-    Vérifiez que les archers sont bien enregistrés dans <code>Entries</code> et que leurs
-    lignes <code>Qualifications</code> existent (statut valide).
+    <b><i class="fa fa-exclamation-triangle"></i> Aucun archer inscrit trouvé.</b><br>
+    Vérifiez que les archers sont bien enregistrés dans <code>Entries</code>
+    (statut valide). Ils apparaîtront même sans score, avec 0 point.
 </div>
 <?php } ?>
 
@@ -196,6 +207,7 @@ include('Common/Templates/head.php');
                 <input type="checkbox" name="onlystarted" value="1"<?php echo $cfg['onlystarted'] ? ' checked' : ''; ?>>
                 N'afficher que les archers ayant commencé (au moins une flèche)
             </label>
+            <span style="color:#777;">(décoché : tous les archers, avec 0 point et 0/6 avant leur première flèche)</span>
         </td>
     </tr>
 
@@ -234,7 +246,10 @@ include('Common/Templates/head.php');
     Les archers sont regroupés par division et classe (par exemple
     « Arc Classique — Sénior 1 Homme »). Chaque ligne affiche le nom, le prénom,
     la volée courante (par exemple <code>4/6</code>) puis le score courant.
-    Le score est rouge sous le seuil et vert à partir du seuil.
+    Le score est rouge sous le seuil et vert à partir du seuil. Tous les archers
+    inscrits sont affichés, même sans score : ils apparaissent avec 0 point et
+    <code>0/6</code>. Le départ affiché peut être « Tous les départs » ou un
+    seul départ.
 </p>
 <p style="max-width:900px;color:#555;">
     IANSEO met à jour <code>QuD1Score</code>, <code>QuD1Hits</code> et
