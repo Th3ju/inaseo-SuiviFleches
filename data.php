@@ -50,6 +50,7 @@ echo json_encode(array(
     'demo'       => $demo ? 1 : 0,
     'serverTime' => time(),
     'title'      => $title,
+    'theme'      => $cfg['theme'],
     'threshold'  => (int)$cfg['threshold'],
     'refresh'    => (int)$cfg['refresh'],
     'rows'       => (int)$cfg['rows'],

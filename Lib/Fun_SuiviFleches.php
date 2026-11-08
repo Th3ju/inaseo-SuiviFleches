@@ -29,6 +29,21 @@ function suivifl_Int($value, $default)
 }
 
 /**
+ * Thèmes d'affichage disponibles.
+ *
+ * @return array code => libellé
+ */
+function suivifl_Themes()
+{
+    return array(
+        'dark'     => 'Écran / salle sombre (défaut)',
+        'light'    => 'Vidéoprojecteur — éclairage ambiant',
+        'contrast' => 'Fort contraste — fond noir',
+        'sunlight' => 'Plein jour — très fort éclairage',
+    );
+}
+
+/**
  * Valeurs par défaut de la configuration.
  * Les clés sont limitées à 30 caractères (MpParameter).
  */
@@ -36,6 +51,7 @@ function suivifl_Defaults()
 {
     return array(
         'title'       => '',   // titre libre ; vide = nom du concours
+        'theme'       => 'dark', // thème couleur de l'écran
         'threshold'   => 280,  // score à partir duquel le score passe au vert
         'refresh'     => 5,    // secondes entre deux interrogations du serveur
         'rows'        => 12,   // lignes visibles (pilote la taille du texte)
@@ -85,6 +101,8 @@ function suivifl_GetConfig($TourId)
     }
 
     $cfg['title']       = trim((string)$cfg['title']);
+    $theme              = is_scalar($cfg['theme']) ? (string)$cfg['theme'] : 'dark';
+    $cfg['theme']       = array_key_exists($theme, suivifl_Themes()) ? $theme : 'dark';
     $cfg['threshold']   = max(1, min(1000, suivifl_Int($cfg['threshold'], SUIVIFL_DEFAULT_THRESHOLD)));
     $cfg['refresh']     = max(2, min(300, suivifl_Int($cfg['refresh'], 5)));
     $cfg['rows']        = max(4, min(40, suivifl_Int($cfg['rows'], 12)));
@@ -104,8 +122,11 @@ function suivifl_GetConfig($TourId)
  */
 function suivifl_SaveConfig($TourId, array $cfg)
 {
+    $theme = (isset($cfg['theme']) && is_scalar($cfg['theme'])) ? (string)$cfg['theme'] : 'dark';
+
     $clean = array(
         'title'       => (isset($cfg['title']) && is_scalar($cfg['title'])) ? trim((string)$cfg['title']) : '',
+        'theme'       => array_key_exists($theme, suivifl_Themes()) ? $theme : 'dark',
         'threshold'   => max(1, min(1000, suivifl_Int(isset($cfg['threshold']) ? $cfg['threshold'] : null, SUIVIFL_DEFAULT_THRESHOLD))),
         'refresh'     => max(2, min(300, suivifl_Int(isset($cfg['refresh']) ? $cfg['refresh'] : null, 5))),
         'rows'        => max(4, min(40, suivifl_Int(isset($cfg['rows']) ? $cfg['rows'] : null, 12))),

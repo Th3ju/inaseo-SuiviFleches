@@ -26,6 +26,7 @@ if (!empty($_POST['save'])) {
 
     suivifl_SaveConfig($TourId, array(
         'title'       => isset($_POST['title']) ? $_POST['title'] : '',
+        'theme'       => isset($_POST['theme']) ? $_POST['theme'] : 'dark',
         'threshold'   => isset($_POST['threshold']) ? $_POST['threshold'] : 280,
         'refresh'     => isset($_POST['refresh']) ? $_POST['refresh'] : 5,
         'rows'        => isset($_POST['rows']) ? $_POST['rows'] : 12,
@@ -149,6 +150,23 @@ include('Common/Templates/head.php');
     </tr>
 
     <tr>
+        <td>Thème d'affichage</td>
+        <td>
+            <select name="theme">
+<?php foreach (suivifl_Themes() as $themeCode => $themeLabel) { ?>
+                <option value="<?php echo htmlspecialchars($themeCode); ?>"<?php echo $cfg['theme'] === $themeCode ? ' selected' : ''; ?>>
+                    <?php echo htmlspecialchars($themeLabel); ?>
+                </option>
+<?php } ?>
+            </select>
+            <span style="color:#777;">
+                (écran ou salle sombre = thème actuel ; éclairage ambiant = fond clair ;
+                fort éclairage = fond jaune très contrasté)
+            </span>
+        </td>
+    </tr>
+
+    <tr>
         <td>Départ affiché</td>
         <td>
             <select name="session">
@@ -250,7 +268,8 @@ include('Common/Templates/head.php');
     Le score est rouge sous le seuil et vert à partir du seuil. Tous les archers
     inscrits sont affichés, même sans score : ils apparaissent avec 0 point et
     <code>0/6</code>. Le départ affiché peut être « Tous les départs » ou un
-    seul départ.
+    seul départ. Le thème d'affichage s'applique à chaud, au prochain
+    rafraîchissement de l'écran.
 </p>
 <p style="max-width:900px;color:#555;">
     IANSEO met à jour <code>QuD1Score</code>, <code>QuD1Hits</code> et

@@ -63,6 +63,49 @@ $InitialTitle = $cfg['title'] !== ''
     --ok:      #37d67a;
     --ko:      #ff4d5e;
 }
+
+/* Vidéoprojecteur avec éclairage ambiant : fond clair, texte et scores foncés. */
+body[data-theme="light"] {
+    --bg:      #f7f9fc;
+    --bg-alt:  #e8edf4;
+    --panel:   #ffffff;
+    --line:    #b8c4d4;
+    --fg:      #0a1220;
+    --muted:   #45536a;
+    --accent:  #8a4b00;
+    --ok:      #087a3e;
+    --ko:      #b71c1c;
+}
+
+/* Fort contraste sur fond noir. */
+body[data-theme="contrast"] {
+    --bg:      #000000;
+    --bg-alt:  #111111;
+    --panel:   #000000;
+    --line:    #ffffff;
+    --fg:      #ffffff;
+    --muted:   #ffffff;
+    --accent:  #ffe600;
+    --ok:      #00ff66;
+    --ko:      #ff3b30;
+}
+
+/* Plein jour / très fort éclairage : fond jaune très clair, noir, traits épais. */
+body[data-theme="sunlight"] {
+    --bg:      #fffdf0;
+    --bg-alt:  #fff2a8;
+    --panel:   #ffffff;
+    --line:    #1a1a1a;
+    --fg:      #000000;
+    --muted:   #222222;
+    --accent:  #5a2d00;
+    --ok:      #005c25;
+    --ko:      #a00000;
+}
+body[data-theme="sunlight"] .c-ath { font-weight: 700; }
+body[data-theme="sunlight"] .c-score { font-weight: 900; }
+body[data-theme="sunlight"] tbody td { border-bottom-width: .18vh; }
+body[data-theme="sunlight"] h2 { border-bottom-width: .4vh; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
@@ -211,7 +254,7 @@ footer .keys { text-align: right; }
 }
 </style>
 </head>
-<body>
+<body data-theme="<?php echo htmlspecialchars($cfg['theme']); ?>">
 
 <header>
     <div class="title" id="title"><?php echo htmlspecialchars($InitialTitle); ?></div>
@@ -437,6 +480,7 @@ footer .keys { text-align: right; }
                 }
                 if (cfg.refresh !== oldRefresh) { armRefresh(); }
 
+                document.body.setAttribute('data-theme', json.theme || 'dark');
                 document.getElementById('title').textContent = json.title || '';
                 document.getElementById('demoBadge').hidden  = !json.demo;
                 document.getElementById('legend').textContent =

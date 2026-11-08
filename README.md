@@ -16,6 +16,8 @@ saisie des flèches.
 - Tri : avec **tous les départs**, par **départ → type de flèche
   (division/classe) → nom** ; avec **un seul départ**, par **type de flèche →
   nom**
+- **4 thèmes d'affichage** : écran/salle sombre (défaut), vidéoprojecteur avec
+  éclairage ambiant, fort contraste, plein jour
 - Défilement continu si le contenu dépasse l'écran
 - Aucune table à créer, aucun fichier du cœur d'IANSEO à modifier
 
@@ -97,6 +99,7 @@ module `suivifl` (aucune table créée) :
 | Réglage | Défaut | Rôle |
 |---|---|---|
 | `title` | vide | titre en haut à gauche ; vide = nom du concours |
+| `theme` | `dark` | thème couleur : `dark`, `light`, `contrast` ou `sunlight` |
 | `threshold` | 280 | score à partir duquel le score passe au vert |
 | `session` | 0 | 0 = tous les départs, sinon numéro de `QuSession` |
 | `dist` | 0 | 0 = total, sinon n° de distance (1 à 8) |
@@ -116,6 +119,22 @@ Avec **Tous les départs**, les groupes sont ordonnés par **départ**, puis par
 **division/classe** (type de flèche), puis les archers par **nom/prénom**.
 Avec **un seul départ**, l'ordre est **division/classe**, puis **nom/prénom**
 (ou score décroissant si ce réglage est choisi).
+
+## Thèmes d'affichage
+
+Le thème se choisit dans **Sorties → Flèches en direct → Thème d'affichage**.
+Il s'applique à chaud : l'écran se met à jour au prochain rafraîchissement.
+
+| Thème | Usage conseillé |
+|---|---|
+| `dark` (défaut) | Écran d'ordinateur, TV ou salle sombre |
+| `light` | Vidéoprojecteur avec éclairage ambiant : fond clair, texte foncé, vert/rouge contrastés |
+| `contrast` | Fort contraste sur fond noir : texte blanc, jaune, vert/rouge vifs |
+| `sunlight` | Plein jour ou très fort éclairage : fond jaune clair, texte noir, traits épaissis |
+
+Pour un vidéoprojecteur en salle éclairée, commencer par `light` ; si l'image
+reste délavée, essayer `sunlight`. Le thème `dark` reste le meilleur choix sur
+un écran ou dans une salle sombre.
 
 ## Dépannage
 
